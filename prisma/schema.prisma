@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+  sales         Sale[]
+  products      Product[]
+  colected      Float   @default(0)
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model Sale {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  deadline    DateTime
+  status      SaleStatus @default(ACTIVE)
+  saleProducts  SaleProduct[]
+  orders      Order[]
+  createdAt   DateTime   @default(now())
+  dateLivraison DateTime  @default(now())
+}
+
+model Product {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  price      Float
+  unit       String
+  saleProducts  SaleProduct[]
+  orderItems OrderItem[]
+}
+
+model SaleProduct {
+  saleId      String
+  productId   String
+  price       Float
+  maxDispo    Int?
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([saleId, productId])
+}
+
+model Order {
+  id                String              @id @default(cuid())
+  saleId            String
+  sale              Sale                @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  buyerName         String
+  buyerEmail        String
+  paid              Boolean             @default(false)
+  delivered         Boolean             @default(false)
+  items             OrderItem[]
+  createdAt         DateTime            @default(now())
+  buyerComment      String
+}
+
+model OrderItem{
+  orderId   String
+  productId String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  priceAtOrder  Float
+
+  @@id([orderId, productId])
+}
+
+model adminUser {
+  id  String @id @default(cuid())
+  userId String
+}
+
+model AuthorizedBeta {
+  id String @id @default(cuid())
+  email String
+}
+
+enum SaleStatus {
+  ACTIVE
+  CLOSED
+}
